@@ -17,6 +17,7 @@ function verificarSenha() {
   }
 }
 
+// Permite pressionar Enter na senha
 document.addEventListener("DOMContentLoaded", () => {
   const inputSenha = document.getElementById("inputSenha");
   if (inputSenha) {
@@ -45,25 +46,23 @@ function iniciarComCadastro() {
 
   document.getElementById("registro").style.display = "none";
   document.getElementById("game").style.display = "grid";
-  initSaldosM1();
 }
 
 function startGame() {
   document.getElementById("intro").style.display = "none";
   document.getElementById("game").style.display = "grid";
-  initSaldosM1();
 }
 
 let usedCards = new Set();
 let mission = 1;
-const MAX_MISSIONS = 6;
+const MAX_MISSIONS = 4;
 
-// ── Saldos herdados do Módulo 1 ──────────────────────────────
-let ativoTotal           = 120000; // Banco 60.000 + Estoques 60.000
-let passivoTotal         = 20000;  // Fornecedores
-let capitalSocial        = 100000;
+// Totais acumulados
+let ativoTotal        = 0;
+let passivoTotal      = 0;
+let capitalSocial     = 0;
 let capitalAIntegralizar = 0;
-let plTotal              = 100000;
+let plTotal           = 0;
 
 // Pontuação
 let score = 0;
@@ -71,43 +70,26 @@ let wrongAttemptsPerCard = {};
 
 // Explicações
 const explanations = {
-  veiculos10000:
-    "Os <strong>Veículos</strong> são um <strong>Ativo Imobilizado</strong> — bem de longa duração que pertence à empresa.",
-  financiamento10000:
-    "O <strong>Financiamento a Pagar</strong> é um <strong>Passivo</strong> — representa a dívida assumida com a financeira para comprar o carro.",
-  fornecedoresPag500:
-    "Os <strong>Fornecedores</strong> são um <strong>Passivo</strong> — ao pagar a dívida, esse valor é baixado (reduzido) do Passivo.",
-  bancoPag500:
-    "O <strong>Banco Conta Movimento</strong> é um <strong>Ativo</strong> — o pagamento reduz o saldo disponível na conta bancária.",
-  estoques1000:
-    "Os <strong>Estoques</strong> são um <strong>Ativo</strong> — nova compra de mercadoria aumenta o estoque da empresa.",
-  fornecedores1000:
-    "Os <strong>Fornecedores</strong> são um <strong>Passivo</strong> — a compra a prazo gera nova obrigação com o fornecedor.",
-  clientesReceber2000:
-    "Os <strong>Clientes a Receber</strong> são um <strong>Ativo</strong> — a venda a prazo gera um direito de recebimento futuro. A parte da receita será estudada no próximo módulo.",
-  estoquesBaixa2000:
-    "Os <strong>Estoques</strong> são um <strong>Ativo</strong> — ao vender a mercadoria, o estoque é reduzido pois saiu da empresa.",
-  bancoReceb2000:
-    "O <strong>Banco Conta Movimento</strong> é um <strong>Ativo</strong> — o recebimento do cliente aumenta o saldo bancário.",
-  clientesBaixa2000:
-    "Os <strong>Clientes a Receber</strong> são um <strong>Ativo</strong> — após o recebimento, a duplicata é baixada pois a dívida foi quitada.",
-  fornecedoresPag8000:
-    "Os <strong>Fornecedores</strong> são um <strong>Passivo</strong> — o pagamento reduz a obrigação da empresa com o fornecedor.",
-  bancoPag8000:
-    "O <strong>Banco Conta Movimento</strong> é um <strong>Ativo</strong> — o pagamento reduz o saldo disponível na conta bancária."
+  capitalSocial:
+    "O <strong>Capital Social Subscrito</strong> vai para o <strong>PL</strong> porque representa o valor que os sócios se comprometeram a investir na empresa.",
+  capitalIntegralizar100:
+    "O <strong>Capital a Integralizar</strong> é uma conta <strong>redutora do PL</strong> — diminui o Capital Social enquanto os sócios ainda não depositaram o dinheiro.",
+  banco60000:
+    "O <strong>Banco Conta Movimento</strong> é um <strong>Ativo</strong> — representa o dinheiro que entrou na conta bancária da empresa.",
+  capitalIntegralizarCredito60000:
+    "O <strong>Capital a Integralizar</strong> é reduzido no <strong>PL</strong> — os sócios cumpriram parte do compromisso ao depositar R$ 60.000.",
+  estoques40000:
+    "Os <strong>Estoques</strong> são um <strong>Ativo</strong> — as mercadorias recebidas pertencem à empresa e têm valor econômico.",
+  capitalIntegralizarCredito40000:
+    "O <strong>Capital a Integralizar</strong> é zerado no <strong>PL</strong> — os sócios integralizaram os R$ 40.000 restantes em mercadorias.",
+  estoques20000:
+    "Os <strong>Estoques</strong> são um <strong>Ativo</strong> — a compra aumenta o estoque disponível da empresa.",
+  fornecedores20000:
+    "Os <strong>Fornecedores</strong> são um <strong>Passivo</strong> — a compra a prazo gera uma obrigação (dívida) com o fornecedor."
 };
 
-function format(v) { return v.toLocaleString("pt-BR"); }
-function $(id)     { return document.getElementById(id); }
-
-// Pré-carrega o balanço do Módulo 1 nos quadros
-function initSaldosM1() {
-  addItem("ativoItems",   "Banco Conta Movimento\nR$ 60.000");
-  addItem("ativoItems",   "Estoques\nR$ 60.000");
-  addItem("passivoItems", "Fornecedores\nR$ 20.000");
-  addItem("plItems",      "Capital Social\nR$ 100.000");
-  updateBalance();
-}
+function format(value) { return value.toLocaleString("pt-BR"); }
+function $(id)         { return document.getElementById(id); }
 
 function allowDrop(event) { event.preventDefault(); }
 function drag(event) { event.dataTransfer.setData("id", event.currentTarget.id); }
@@ -116,7 +98,7 @@ let selectedCardId = null;
 
 function selectCard(id) {
   selectedCardId = id;
-  document.querySelectorAll(".card").forEach(c => c.classList.remove("card-selected"));
+  document.querySelectorAll(".card").forEach(card => card.classList.remove("card-selected"));
   const card = $(id);
   if (card) card.classList.add("card-selected");
   $("feedback").innerHTML = "Agora toque no quadro correto.";
@@ -158,61 +140,41 @@ function loadMission() {
   if (mission === 1) {
     $("missionBox").innerHTML = `
       <h2>📖 Missão 1 de ${MAX_MISSIONS}</h2>
-      <p><strong>A empresa comprou um carro financiado no valor de R$ 10.000.</strong></p>
-      <p>Classifique as duas contas corretamente.</p>`;
+      <p><strong>Os sócios subscreveram Capital Social de R$ 100.000.</strong></p>
+      <p>Classifique as contas corretamente.</p>`;
     $("cards").innerHTML =
-      createCard("veiculos", "Veículos", 10000, "ativo", "veiculos10000") +
-      createCard("financiamento", "Financiamento a Pagar", 10000, "passivo", "financiamento10000");
+      createCard("capitalSocial", "Capital Social Subscrito", 100000, "pl", "capitalSocial") +
+      createCard("capitalIntegralizar", "Capital a Integralizar", 100000, "pl", "capitalIntegralizar100");
   }
 
   if (mission === 2) {
     $("missionBox").innerHTML = `
       <h2>📖 Missão 2 de ${MAX_MISSIONS}</h2>
-      <p><strong>A empresa pagou R$ 500 de fornecedores em dinheiro.</strong></p>
-      <p>⚠️ Atenção: nesta missão as duas contas são <em>reduzidas</em>.</p>`;
+      <p><strong>Os sócios depositaram R$ 60.000 na conta bancária da empresa.</strong></p>
+      <p>Classifique as duas contas envolvidas no lançamento.</p>`;
     $("cards").innerHTML =
-      createCard("fornecedoresPag", "Fornecedores", 500, "passivo", "fornecedoresPag500") +
-      createCard("bancoPag", "Banco Conta Movimento", 500, "ativo", "bancoPag500");
+      createCard("banco", "Banco Conta Movimento", 60000, "ativo", "banco60000") +
+      createCard("capitalIntegralizar60", "Capital a Integralizar", 60000, "pl", "capitalIntegralizarCredito60000");
   }
 
   if (mission === 3) {
     $("missionBox").innerHTML = `
       <h2>📖 Missão 3 de ${MAX_MISSIONS}</h2>
-      <p><strong>A empresa comprou R$ 1.000 em mercadorias a prazo.</strong></p>
-      <p>Classifique as duas contas corretamente.</p>`;
+      <p><strong>Os sócios integralizaram os R$ 40.000 restantes em mercadorias.</strong></p>
+      <p>Classifique as duas contas envolvidas na operação.</p>`;
     $("cards").innerHTML =
-      createCard("estoques1000", "Estoques", 1000, "ativo", "estoques1000") +
-      createCard("fornecedores1000", "Fornecedores", 1000, "passivo", "fornecedores1000");
+      createCard("estoques40", "Estoques", 40000, "ativo", "estoques40000") +
+      createCard("capitalIntegralizar40", "Capital a Integralizar", 40000, "pl", "capitalIntegralizarCredito40000");
   }
 
   if (mission === 4) {
     $("missionBox").innerHTML = `
       <h2>📖 Missão 4 de ${MAX_MISSIONS}</h2>
-      <p><strong>A empresa vendeu R$ 2.000 em mercadorias a prazo.</strong></p>
-      <p>⚠️ As duas contas pertencem ao <em>Ativo</em>: uma entra, a outra sai.</p>`;
+      <p><strong>A empresa comprou R$ 20.000 em estoques a prazo.</strong></p>
+      <p>Classifique as duas contas corretamente.</p>`;
     $("cards").innerHTML =
-      createCard("clientes2000", "Clientes a Receber", 2000, "ativo", "clientesReceber2000") +
-      createCard("estoquesBaixa", "Estoques", 2000, "ativo", "estoquesBaixa2000");
-  }
-
-  if (mission === 5) {
-    $("missionBox").innerHTML = `
-      <h2>📖 Missão 5 de ${MAX_MISSIONS}</h2>
-      <p><strong>O cliente pagou os R$ 2.000 da venda a prazo.</strong></p>
-      <p>⚠️ As duas contas pertencem ao <em>Ativo</em>: uma entra, a outra sai.</p>`;
-    $("cards").innerHTML =
-      createCard("bancoReceb", "Banco Conta Movimento", 2000, "ativo", "bancoReceb2000") +
-      createCard("clientesBaixa", "Clientes a Receber", 2000, "ativo", "clientesBaixa2000");
-  }
-
-  if (mission === 6) {
-    $("missionBox").innerHTML = `
-      <h2>📖 Missão 6 de ${MAX_MISSIONS}</h2>
-      <p><strong>A empresa pagou R$ 8.000 de obrigações em dinheiro.</strong></p>
-      <p>⚠️ Atenção: nesta missão as duas contas são <em>reduzidas</em>.</p>`;
-    $("cards").innerHTML =
-      createCard("fornecedoresPag8000", "Fornecedores", 8000, "passivo", "fornecedoresPag8000") +
-      createCard("bancoPag8000", "Banco Conta Movimento", 8000, "ativo", "bancoPag8000");
+      createCard("estoques20", "Estoques", 20000, "ativo", "estoques20000") +
+      createCard("fornecedores", "Fornecedores", 20000, "passivo", "fornecedores20000");
   }
 
   updateBalance();
@@ -248,18 +210,14 @@ function drop(event, targetSide) {
   usedCards.add(id);
   card.remove();
 
-  if (action === "veiculos10000")       { ativoTotal += value;  addItem("ativoItems", name); }
-  if (action === "financiamento10000")  { passivoTotal += value; addItem("passivoItems", name); }
-  if (action === "fornecedoresPag500")  { passivoTotal -= value; addItem("passivoItems", "(-) " + name.split("\n")[0]); }
-  if (action === "bancoPag500")         { ativoTotal -= value;   addItem("ativoItems",   "(-) " + name.split("\n")[0]); }
-  if (action === "estoques1000")        { ativoTotal += value;   addItem("ativoItems", name); }
-  if (action === "fornecedores1000")    { passivoTotal += value; addItem("passivoItems", name); }
-  if (action === "clientesReceber2000") { ativoTotal += value;   addItem("ativoItems", name); }
-  if (action === "estoquesBaixa2000")   { ativoTotal -= value;   addItem("ativoItems",   "(-) " + name.split("\n")[0]); }
-  if (action === "bancoReceb2000")      { ativoTotal += value;   addItem("ativoItems", name); }
-  if (action === "clientesBaixa2000")   { ativoTotal -= value;   addItem("ativoItems",   "(-) " + name.split("\n")[0]); }
-  if (action === "fornecedoresPag8000") { passivoTotal -= value; addItem("passivoItems", "(-) " + name.split("\n")[0]); }
-  if (action === "bancoPag8000")        { ativoTotal -= value;   addItem("ativoItems",   "(-) " + name.split("\n")[0]); }
+  if (action === "capitalSocial")                  { capitalSocial += value; addItem("plItems", name); }
+  if (action === "capitalIntegralizar100")          { capitalAIntegralizar += value; $("redutoraArea").style.display = "block"; updateRedutoraText(); }
+  if (action === "banco60000")                      { ativoTotal += value; addItem("ativoItems", name); }
+  if (action === "capitalIntegralizarCredito60000") { capitalAIntegralizar -= value; updateRedutoraText(); }
+  if (action === "estoques40000")                   { ativoTotal += value; addItem("ativoItems", name); }
+  if (action === "capitalIntegralizarCredito40000") { capitalAIntegralizar -= value; updateRedutoraText(); }
+  if (action === "estoques20000")                   { ativoTotal += value; addItem("ativoItems", name); }
+  if (action === "fornecedores20000")               { passivoTotal += value; addItem("passivoItems", name); }
 
   updateBalance();
   checkMissionComplete();
@@ -272,7 +230,7 @@ function checkMissionComplete() {
       $("nextBtn").disabled = false;
       $("nextBtn").innerText = "➡ Próxima Missão";
     } else {
-      $("feedback").innerHTML = "✅ Módulo 2 concluído!";
+      $("feedback").innerHTML = "✅ Todas as missões concluídas!";
       $("nextBtn").disabled = false;
       $("nextBtn").innerText = "🏆 Ver Resultado Final";
     }
@@ -300,6 +258,12 @@ function addItem(areaId, text, redutora = false) {
   item.className = redutora ? "inside redutora" : "inside";
   item.innerText = text;
   $(areaId).appendChild(item);
+}
+
+function updateRedutoraText() {
+  $("redutoraArea").style.display = "block";
+  $("redutoraItems").innerHTML = "";
+  addItem("redutoraItems", "(-) Capital a Integralizar\nR$ " + format(capitalAIntegralizar), true);
 }
 
 function updateBalance() {
@@ -330,13 +294,17 @@ function updateBalance() {
     balanceArea.classList.remove("balanca-vibrar");
   }
 
-  ["ativoBox","passivoBox","plBox"].forEach(pid => {
-    $(pid).classList.remove("destaque-ativo","destaque-passivo","destaque-equilibrado");
-  });
+  const ativoBox   = $("ativoBox");
+  const passivoBox = $("passivoBox");
+  const plBox      = $("plBox");
 
-  if (diff > 0)      { $("ativoBox").classList.add("destaque-ativo"); }
-  else if (diff < 0) { $("passivoBox").classList.add("destaque-passivo"); $("plBox").classList.add("destaque-passivo"); }
-  else               { ["ativoBox","passivoBox","plBox"].forEach(pid => $(pid).classList.add("destaque-equilibrado")); }
+  [ativoBox, passivoBox, plBox].forEach(el =>
+    el.classList.remove("destaque-ativo", "destaque-passivo", "destaque-equilibrado")
+  );
+
+  if (diff > 0)      { ativoBox.classList.add("destaque-ativo"); }
+  else if (diff < 0) { passivoBox.classList.add("destaque-passivo"); plBox.classList.add("destaque-passivo"); }
+  else               { ativoBox.classList.add("destaque-equilibrado"); passivoBox.classList.add("destaque-equilibrado"); plBox.classList.add("destaque-equilibrado"); }
 }
 
 function showError(name) {
@@ -358,7 +326,7 @@ function showFinalResult() {
     const agora = new Date();
     const data  = agora.toLocaleDateString("pt-BR") + " " + agora.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
     const params = new URLSearchParams({
-      modulo:    "Módulo 2",
+      modulo:    "Módulo 1",
       nome:      alunoNome,
       email:     alunoEmail,
       pontuacao: score,
@@ -373,15 +341,15 @@ function showFinalResult() {
 
   let medal = "", msg = "";
   if (percent === 100)    { medal = "🥇"; msg = "Perfeito! Você acertou tudo de primeira!"; }
-  else if (percent >= 70) { medal = "🥈"; msg = "Muito bem! Você domina os conceitos!"; }
-  else                    { medal = "🥉"; msg = "Continue praticando! Você está evoluindo!"; }
+  else if (percent >= 70) { medal = "🥈"; msg = "Muito bem! Você domina os conceitos básicos."; }
+  else                    { medal = "🥉"; msg = "Continue praticando! Você está no caminho certo."; }
 
   const equilibrado = ativoTotal === (passivoTotal + plTotal);
 
   const finalDiv = document.createElement("div");
   finalDiv.className = "resultado-final";
   finalDiv.innerHTML = `
-    <h1>⚖️ Resultado — Módulo 2</h1>
+    <h1>⚖️ Resultado Final — Módulo 1</h1>
     <div class="resultado-medal">${medal}</div>
     <div class="resultado-pontos">${score} / ${maxScore} pontos</div>
     <p class="resultado-msg">${msg}</p>
@@ -419,11 +387,11 @@ function showFinalResult() {
 
 function resetGame() {
   mission              = 1;
-  ativoTotal           = 120000;
-  passivoTotal         = 20000;
-  capitalSocial        = 100000;
+  ativoTotal           = 0;
+  passivoTotal         = 0;
+  capitalSocial        = 0;
   capitalAIntegralizar = 0;
-  plTotal              = 100000;
+  plTotal              = 0;
   score                = 0;
   wrongAttemptsPerCard = {};
   usedCards.clear();
@@ -439,8 +407,8 @@ function resetGame() {
   $("nextBtn").innerText = "➡ Próxima Missão";
   $("game").style.display = "grid";
 
-  initSaldosM1();
   loadMission();
+  updateBalance();
 }
 
 loadMission();
@@ -494,7 +462,9 @@ function onTouchEnd(e) {
   const touch = e.changedTouches[0];
   if (touchClone) { touchClone.remove(); touchClone = null; }
   touchDragCard.style.opacity = '1';
-  ['ativoBox','passivoBox','plBox'].forEach(pid => { const el=$(pid); if(el) el.classList.remove('hover-drop'); });
+  ['ativoBox','passivoBox','plBox'].forEach(pid => {
+    const el = $(pid); if (el) el.classList.remove('hover-drop');
+  });
 
   const sideMap = { ativoBox:'ativo', passivoBox:'passivo', plBox:'pl' };
   let targetSide = null;
