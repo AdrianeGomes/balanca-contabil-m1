@@ -253,16 +253,63 @@ function showExplanation(action) {
   el.innerHTML = "💡 " + texto;
 }
 
+// Agrupa entradas por conta com subtotal (igual ao M2)
+const areaGroups = {};
+
+function parseAmount(text) {
+  const match = text.match(/R\$\s*([\d.]+)/);
+  if (!match) return 0;
+  return parseInt(match[1].replace(/\./g, "")) || 0;
+}
+
 function addItem(areaId, text, redutora = false) {
-  const item = document.createElement("div");
-  item.className = redutora ? "inside redutora" : "inside";
-  item.innerText = text;
-  $(areaId).appendChild(item);
+  const lines       = text.split("\n");
+  const accountName = lines[0].replace("(-) ", "").trim();
+  const isReduction = lines[0].startsWith("(-)");
+  const amount      = parseAmount(lines[1] || lines[0]);
+  const groupKey    = areaId + "|" + accountName;
+
+  if (!areaGroups[groupKey]) {
+    const groupEl = document.createElement("div");
+    groupEl.className = "account-group inside";
+
+    const titleEl = document.createElement("div");
+    titleEl.className = "account-group-name";
+    titleEl.innerText = accountName;
+    groupEl.appendChild(titleEl);
+
+    const entriesEl = document.createElement("div");
+    entriesEl.className = "account-entries";
+    groupEl.appendChild(entriesEl);
+
+    const subtotalEl = document.createElement("div");
+    subtotalEl.className = "account-subtotal";
+    groupEl.appendChild(subtotalEl);
+
+    $(areaId).appendChild(groupEl);
+    areaGroups[groupKey] = { entriesEl, subtotalEl, total: 0, accountName };
+  }
+
+  const group   = areaGroups[groupKey];
+  const entryEl = document.createElement("div");
+  entryEl.className = isReduction ? "account-entry entry-redutora" : "account-entry entry-normal";
+  entryEl.innerText = (isReduction ? "(−) R$ " : "+ R$ ") + format(amount);
+  group.entriesEl.appendChild(entryEl);
+
+  group.total += isReduction ? -amount : amount;
+  if (group.entriesEl.children.length > 1) {
+    group.subtotalEl.innerText = "Subtotal: R$ " + format(group.total);
+    group.subtotalEl.style.display = "block";
+  } else {
+    group.subtotalEl.style.display = "none";
+  }
 }
 
 function updateRedutoraText() {
   $("redutoraArea").style.display = "block";
   $("redutoraItems").innerHTML = "";
+  // Limpar cache do grupo para recriar com valor atualizado
+  Object.keys(areaGroups).filter(k => k.startsWith("redutoraItems|")).forEach(k => delete areaGroups[k]);
   addItem("redutoraItems", "(-) Capital a Integralizar\nR$ " + format(capitalAIntegralizar), true);
 }
 
@@ -402,6 +449,7 @@ function resetGame() {
   $("passivoItems").innerHTML  = "";
   $("plItems").innerHTML       = "";
   $("redutoraItems").innerHTML = "";
+  Object.keys(areaGroups).forEach(k => delete areaGroups[k]);
   $("redutoraArea").style.display = "none";
   $("nextBtn").innerText = "➡ Próxima Missão";
   $("game").style.display = "grid";
