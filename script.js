@@ -210,14 +210,17 @@ function drop(event, targetSide) {
   usedCards.add(id);
   card.remove();
 
-  if (action === "capitalSocial")                  { capitalSocial += value; addItem("plItems", name); }
-  if (action === "capitalIntegralizar100")          { capitalAIntegralizar += value; $("redutoraArea").style.display = "block"; updateRedutoraText(); }
-  if (action === "banco60000")                      { ativoTotal += value; addItem("ativoItems", name); }
-  if (action === "capitalIntegralizarCredito60000") { capitalAIntegralizar -= value; updateRedutoraText(); }
-  if (action === "estoques40000")                   { ativoTotal += value; addItem("ativoItems", name); }
-  if (action === "capitalIntegralizarCredito40000") { capitalAIntegralizar -= value; updateRedutoraText(); }
-  if (action === "estoques20000")                   { ativoTotal += value; addItem("ativoItems", name); }
-  if (action === "fornecedores20000")               { passivoTotal += value; addItem("passivoItems", name); }
+  if (action === "capitalSocial")                  { capitalSocial += value;        addItem("plItems",      name); }
+  if (action === "capitalIntegralizar100")          { capitalAIntegralizar += value; $("redutoraArea").style.display = "block";
+                                                      addItem("redutoraItems", name); }
+  if (action === "banco60000")                      { ativoTotal += value;           addItem("ativoItems",   name); }
+  if (action === "capitalIntegralizarCredito60000") { capitalAIntegralizar -= value;
+                                                      addItem("redutoraItems", "(-) Capital a Integralizar\nR$ " + format(value), true); }
+  if (action === "estoques40000")                   { ativoTotal += value;           addItem("ativoItems",   name); }
+  if (action === "capitalIntegralizarCredito40000") { capitalAIntegralizar -= value;
+                                                      addItem("redutoraItems", "(-) Capital a Integralizar\nR$ " + format(value), true); }
+  if (action === "estoques20000")                   { ativoTotal += value;           addItem("ativoItems",   name); }
+  if (action === "fornecedores20000")               { passivoTotal += value;         addItem("passivoItems", name); }
 
   updateBalance();
   checkMissionComplete();
@@ -305,13 +308,6 @@ function addItem(areaId, text, redutora = false) {
   }
 }
 
-function updateRedutoraText() {
-  $("redutoraArea").style.display = "block";
-  $("redutoraItems").innerHTML = "";
-  // Limpar cache do grupo para recriar com valor atualizado
-  Object.keys(areaGroups).filter(k => k.startsWith("redutoraItems|")).forEach(k => delete areaGroups[k]);
-  addItem("redutoraItems", "(-) Capital a Integralizar\nR$ " + format(capitalAIntegralizar), true);
-}
 
 function updateBalance() {
   plTotal = capitalSocial - capitalAIntegralizar;
